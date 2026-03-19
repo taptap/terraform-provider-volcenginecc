@@ -109,6 +109,16 @@ func resourceIsImmutableType(v bool) ResourceOptionsFunc {
 	}
 }
 
+// resourceIsGlobalService marks a resource type as a global (non-regional) service.
+// Global services (e.g. IAM) must not pass a RegionID to the Cloud Control API;
+// sending a regional value causes a "RegionNotSupport" error.
+func resourceIsGlobalService(v bool) ResourceOptionsFunc {
+	return func(o *genericResource) error {
+		o.globalService = v
+		return nil
+	}
+}
+
 // resourceWithWriteOnlyPropertyPaths is a helper function to construct functional options
 // that set a resource type's write-only property paths (JSON Pointer).
 // If multiple resourceWithWriteOnlyPropertyPaths calls are made, the last call overrides
@@ -301,6 +311,13 @@ func (opts ResourceOptions) IsImmutableType(v bool) ResourceOptions {
 	return append(opts, resourceIsImmutableType(v))
 }
 
+// IsGlobalService marks the resource as belonging to a global (non-regional) service.
+// When true, an empty RegionID is sent to the Cloud Control API instead of the
+// provider-configured region, avoiding "RegionNotSupport" errors for services like IAM.
+func (opts ResourceOptions) IsGlobalService(v bool) ResourceOptions {
+	return append(opts, resourceIsGlobalService(v))
+}
+
 // WithWriteOnlyPropertyPaths is a helper function to construct functional options
 // that set a resource type's write-only property paths, append that function to the
 // current slice of functional options and return the new slice of options.
@@ -388,6 +405,7 @@ type genericResource struct {
 	tfToCcNameMap            map[string]string // Map of Terraform attribute name to Cloud Control property name
 	ccToTfNameMap            map[string]string // Map of Cloud Control property name to Terraform attribute name
 	isImmutableType          bool              // Resources cannot be updated and must be recreated
+	globalService            bool              // Service is global (non-regional); omit RegionID from Cloud Control API calls
 	writeOnlyAttributePaths  []*path.Path      // Paths to any write-only attributes
 	readOnlyAttributePaths   []*path.Path      // Paths to any read-only attributes
 	createOnlyAttributePaths []*path.Path      // Paths to any create-only attributes
@@ -451,7 +469,7 @@ func (r *genericResource) Create(ctx context.Context, request resource.CreateReq
 	}
 	output, err := cloudControlClient.CreateResourceWithContext(ctx, &cloudcontrol.CreateResourceInput{
 		TypeName:    util.StringPtr(r.ccTypeName),
-		RegionID:    r.provider.Region(ctx),
+		RegionID:    r.regionID(ctx),
 		ClientToken: util.StringPtr(util.GenerateToken(32)),
 		TargetState: &targetState,
 	})
@@ -741,7 +759,7 @@ func (r *genericResource) Update(ctx context.Context, request resource.UpdateReq
 	}
 	output, err := cloudControlClient.UpdateResourceWithContext(ctx, &cloudcontrol.UpdateResourceInput{
 		TypeName:      util.StringPtr(r.ccTypeName),
-		RegionID:      util.StringPtr(r.provider.Region(ctx)),
+		RegionID:      util.StringPtr(r.regionID(ctx)),
 		Identifier:    util.StringPtr(id),
 		ClientToken:   util.StringPtr(util.GenerateToken(32)),
 		PatchDocument: PatchDocumentArray,
@@ -834,7 +852,7 @@ func (r *genericResource) Delete(ctx context.Context, request resource.DeleteReq
 		return
 	}
 
-	err = tfcloudcontrol.DeleteResource(ctx, conn, r.provider.Region(ctx), "", r.ccTypeName, id)
+	err = tfcloudcontrol.DeleteResource(ctx, conn, r.regionID(ctx), "", r.ccTypeName, id)
 
 	if err != nil {
 		response.Diagnostics.Append(ServiceOperationErrorDiag("Cloud Control API", "DeleteResource", err))
@@ -872,14 +890,24 @@ func (r *genericResource) ConfigValidators(context.Context) []resource.ConfigVal
 	return validators
 }
 
+// regionID returns the region string to pass to Cloud Control API calls.
+// Global services (e.g. IAM Group) must receive an empty string to avoid
+// "RegionNotSupport" errors from the regional Cloud Control endpoint.
+func (r *genericResource) regionID(ctx context.Context) string {
+	if r.globalService {
+		return ""
+	}
+	return r.provider.Region(ctx)
+}
+
 // describe returns the live state of the specified resource.
 func (r *genericResource) describe(ctx context.Context, client *cloudcontrol.CloudControl, id string) (*cloudcontrol.GetResourceOutput, error) {
-	return tfcloudcontrol.FindResourceByTypeNameAndID(ctx, client, r.provider.Region(ctx), r.ccTypeName, id)
+	return tfcloudcontrol.FindResourceByTypeNameAndID(ctx, client, r.regionID(ctx), r.ccTypeName, id)
 }
 
 // describe returns the live state of the specified resource.
 func (r *genericResource) describeWithSysTag(ctx context.Context, client *cloudcontrol.CloudControl, id string) (*cloudcontrol.GetResourceOutput, error) {
-	return tfcloudcontrol.FindResourceByTypeNameAndIDWithSysTag(ctx, client, r.provider.Region(ctx), r.ccTypeName, id)
+	return tfcloudcontrol.FindResourceByTypeNameAndIDWithSysTag(ctx, client, r.regionID(ctx), r.ccTypeName, id)
 }
 
 // getId returns the resource's primary identifier value from State.
