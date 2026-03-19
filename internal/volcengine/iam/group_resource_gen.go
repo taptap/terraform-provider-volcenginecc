@@ -398,7 +398,7 @@ func groupResource(ctx context.Context) (resource.Resource, error) {
 
 	var opts generic.ResourceOptions
 
-	opts = opts.WithCloudControlTypeName("Volcengine::IAM::Group").WithTerraformTypeName("volcenginecc_iam_group")
+	opts = opts.WithCloudControlTypeName("Volcengine::IAM::Group").WithTerraformTypeName("volcenginecc_iam_group").IsGlobalService(true)
 	opts = opts.WithTerraformSchema(schema)
 	opts = opts.WithAttributeNameMap(map[string]string{
 		"account_id":           "AccountID",
