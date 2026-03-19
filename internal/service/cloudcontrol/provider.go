@@ -12,6 +12,9 @@ import (
 type Provider interface {
 	CloudControlAPIClient(context.Context) *cloudcontrol.CloudControl
 
+	// GlobalCloudControlAPIClient returns a client for global (non-regional) services.
+	GlobalCloudControlAPIClient(context.Context) *cloudcontrol.CloudControl
+
 	Region(ctx context.Context) string
 
 	RegisterLogger(ctx context.Context) context.Context

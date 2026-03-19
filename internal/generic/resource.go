@@ -442,7 +442,7 @@ func (r *genericResource) Create(ctx context.Context, request resource.CreateReq
 
 	traceEntry(ctx, "Resource.Create")
 
-	cloudControlClient := r.provider.CloudControlAPIClient(ctx)
+	cloudControlClient := r.cloudControlClient(ctx)
 
 	tflog.Debug(ctx, "Request.Plan.Raw", map[string]interface{}{
 		"value": hclog.Fmt("%v", request.Plan.Raw),
@@ -551,7 +551,7 @@ func (r *genericResource) Read(ctx context.Context, request resource.ReadRequest
 		"value": hclog.Fmt("%v", request.State.Raw),
 	})
 
-	client := r.provider.CloudControlAPIClient(ctx)
+	client := r.cloudControlClient(ctx)
 
 	currentState := &request.State
 	id, err := r.getId(ctx, currentState)
@@ -625,7 +625,7 @@ func (r *genericResource) Update(ctx context.Context, request resource.UpdateReq
 
 	traceEntry(ctx, "Resource.Update")
 
-	cloudControlClient := r.provider.CloudControlAPIClient(ctx)
+	cloudControlClient := r.cloudControlClient(ctx)
 
 	currentState := &request.State
 	id, err := r.getId(ctx, currentState)
@@ -705,7 +705,7 @@ func (r *genericResource) Update(ctx context.Context, request resource.UpdateReq
 	}
 
 	//for update set ,get new resource
-	description, err := r.describeWithSysTag(ctx, r.provider.CloudControlAPIClient(ctx), id)
+	description, err := r.describeWithSysTag(ctx, r.cloudControlClient(ctx), id)
 
 	if tfresource.NotFound(err) {
 		response.Diagnostics.Append(ResourceNotFoundAfterWriteDiag(err))
@@ -842,7 +842,7 @@ func (r *genericResource) Delete(ctx context.Context, request resource.DeleteReq
 
 	traceEntry(ctx, "Resource.Delete")
 
-	conn := r.provider.CloudControlAPIClient(ctx)
+	conn := r.cloudControlClient(ctx)
 
 	id, err := r.getId(ctx, &request.State)
 
@@ -891,13 +891,21 @@ func (r *genericResource) ConfigValidators(context.Context) []resource.ConfigVal
 }
 
 // regionID returns the region string to pass to Cloud Control API calls.
-// Global services (e.g. IAM Group) must receive an empty string to avoid
-// "RegionNotSupport" errors from the regional Cloud Control endpoint.
+// Global services return an empty string since they use a global endpoint.
 func (r *genericResource) regionID(ctx context.Context) string {
 	if r.globalService {
 		return ""
 	}
 	return r.provider.Region(ctx)
+}
+
+// cloudControlClient returns the appropriate CloudControl API client for this resource.
+// Global services use a client pointed at the global endpoint to avoid "RegionNotSupport" errors.
+func (r *genericResource) cloudControlClient(ctx context.Context) *cloudcontrol.CloudControl {
+	if r.globalService {
+		return r.provider.GlobalCloudControlAPIClient(ctx)
+	}
+	return r.cloudControlClient(ctx)
 }
 
 // describe returns the live state of the specified resource.
@@ -951,7 +959,7 @@ func (r *genericResource) populateUnknownValues(ctx context.Context, id string, 
 		return nil
 	}
 
-	description, err := r.describe(ctx, r.provider.CloudControlAPIClient(ctx), id)
+	description, err := r.describe(ctx, r.cloudControlClient(ctx), id)
 
 	if tfresource.NotFound(err) {
 		diags.Append(ResourceNotFoundAfterWriteDiag(err))

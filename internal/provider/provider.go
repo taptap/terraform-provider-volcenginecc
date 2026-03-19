@@ -43,13 +43,20 @@ const (
 // providerData is returned from the provider's Configure method and
 // is passed to each resource and data source in their Configure methods.
 type providerData struct {
-	ccAPIClient *cloudcontrol.CloudControl
-	logger      baselogging.Logger
-	region      string
+	ccAPIClient       *cloudcontrol.CloudControl
+	globalCCAPIClient *cloudcontrol.CloudControl // client for global (non-regional) services
+	logger            baselogging.Logger
+	region            string
 }
 
 func (p *providerData) CloudControlAPIClient(_ context.Context) *cloudcontrol.CloudControl {
 	return p.ccAPIClient
+}
+
+// GlobalCloudControlAPIClient returns a CloudControl client configured with the
+// global (non-regional) endpoint for services like IAM that do not support regional routing.
+func (p *providerData) GlobalCloudControlAPIClient(_ context.Context) *cloudcontrol.CloudControl {
+	return p.globalCCAPIClient
 }
 
 func (p *providerData) Region(_ context.Context) string {
@@ -433,10 +440,21 @@ func newProviderData(ctx context.Context, c *configModel) (*providerData, diag.D
 		return nil, diags
 	}
 
+	// Create a second session with a global (non-regional) endpoint for services like IAM.
+	globalConfig := config.Copy()
+	globalConfig.WithEndpoint("cloudcontrol.volcengineapi.com")
+	globalSess, err := session.NewSession(globalConfig)
+	if err != nil {
+		diags.AddError(err.Error(), err.Error())
+		return nil, diags
+	}
+	globalCloudcontrolClient := cloudcontrol.New(globalSess)
+
 	providerData := &providerData{
-		ccAPIClient: cloudcontrolClient,
-		logger:      logger,
-		region:      c.Region.String(),
+		ccAPIClient:       cloudcontrolClient,
+		globalCCAPIClient: globalCloudcontrolClient,
+		logger:            logger,
+		region:            c.Region.String(),
 	}
 
 	return providerData, diags
