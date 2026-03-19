@@ -764,7 +764,7 @@ func userResource(ctx context.Context) (resource.Resource, error) {
 
 	var opts generic.ResourceOptions
 
-	opts = opts.WithCloudControlTypeName("Volcengine::IAM::User").WithTerraformTypeName("volcenginecc_iam_user")
+	opts = opts.WithCloudControlTypeName("Volcengine::IAM::User").WithTerraformTypeName("volcenginecc_iam_user").IsGlobalService(true)
 	opts = opts.WithTerraformSchema(schema)
 	opts = opts.WithAttributeNameMap(map[string]string{
 		"access_key":                "AccessKey",

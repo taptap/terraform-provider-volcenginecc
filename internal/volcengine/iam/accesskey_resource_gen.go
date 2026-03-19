@@ -200,7 +200,7 @@ func accesskeyResource(ctx context.Context) (resource.Resource, error) {
 
 	var opts generic.ResourceOptions
 
-	opts = opts.WithCloudControlTypeName("Volcengine::IAM::Accesskey").WithTerraformTypeName("volcenginecc_iam_accesskey")
+	opts = opts.WithCloudControlTypeName("Volcengine::IAM::Accesskey").WithTerraformTypeName("volcenginecc_iam_accesskey").IsGlobalService(true)
 	opts = opts.WithTerraformSchema(schema)
 	opts = opts.WithAttributeNameMap(map[string]string{
 		"access_key_id":     "AccessKeyId",

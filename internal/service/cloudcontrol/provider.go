@@ -11,6 +11,7 @@ import (
 
 type Provider interface {
 	CloudControlAPIClient(context.Context) *cloudcontrol.CloudControl
+	GlobalCloudControlAPIClient(context.Context) *cloudcontrol.CloudControl
 
 	Region(ctx context.Context) string
 

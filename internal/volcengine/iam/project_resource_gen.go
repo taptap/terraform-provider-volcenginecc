@@ -189,7 +189,7 @@ func projectResource(ctx context.Context) (resource.Resource, error) {
 
 	var opts generic.ResourceOptions
 
-	opts = opts.WithCloudControlTypeName("Volcengine::IAM::Project").WithTerraformTypeName("volcenginecc_iam_project")
+	opts = opts.WithCloudControlTypeName("Volcengine::IAM::Project").WithTerraformTypeName("volcenginecc_iam_project").IsGlobalService(true)
 	opts = opts.WithTerraformSchema(schema)
 	opts = opts.WithAttributeNameMap(map[string]string{
 		"account_id":          "AccountID",

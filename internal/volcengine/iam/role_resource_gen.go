@@ -332,7 +332,7 @@ func roleResource(ctx context.Context) (resource.Resource, error) {
 
 	var opts generic.ResourceOptions
 
-	opts = opts.WithCloudControlTypeName("Volcengine::IAM::Role").WithTerraformTypeName("volcenginecc_iam_role")
+	opts = opts.WithCloudControlTypeName("Volcengine::IAM::Role").WithTerraformTypeName("volcenginecc_iam_role").IsGlobalService(true)
 	opts = opts.WithTerraformSchema(schema)
 	opts = opts.WithAttributeNameMap(map[string]string{
 		"create_date":            "CreateDate",

@@ -591,7 +591,7 @@ func policyResource(ctx context.Context) (resource.Resource, error) {
 
 	var opts generic.ResourceOptions
 
-	opts = opts.WithCloudControlTypeName("Volcengine::IAM::Policy").WithTerraformTypeName("volcenginecc_iam_policy")
+	opts = opts.WithCloudControlTypeName("Volcengine::IAM::Policy").WithTerraformTypeName("volcenginecc_iam_policy").IsGlobalService(true)
 	opts = opts.WithTerraformSchema(schema)
 	opts = opts.WithAttributeNameMap(map[string]string{
 		"attachment_count":       "AttachmentCount",
