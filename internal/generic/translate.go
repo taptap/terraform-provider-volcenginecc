@@ -132,9 +132,9 @@ func (t toCloudControl) rawFromValue(ctx context.Context, schema typeAtTerraform
 			}
 			vs = append(vs, v)
 		}
-		if len(vs) == 0 {
-			return nil, nil
-		}
+		// Return an empty slice (not nil) for explicitly empty lists/sets so that
+		// the field is preserved as "[]" in the JSON rather than omitted entirely.
+		// This is critical for fields like PolicyScope where [] means "global scope".
 		return vs, nil
 
 	case typ.Is(tftypes.Map{}), typ.Is(tftypes.Object{}):
